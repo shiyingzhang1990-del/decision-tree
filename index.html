@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="决策树互动模型：点击每个节点查看指引，理解如何用树形结构做决定判断。根节点、内部节点、分支、叶子 + 七步决策法 + 自测。">
+<title>决策树 · 用树形结构做决定判断</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#ffffff; --ink:#1a1d24; --sub:#6b7280;
+  --line:#e6e8ec; --accent:#2563eb; --accent2:#1e40af;
+  --root:#d97706; --internal:#2563eb; --leaf:#15803d;
+  --ok:#15803d; --bad:#b91c1c; --soft:#eef2ff;
+  --radius:14px; --shadow:0 1px 3px rgba(16,24,40,.06),0 1px 2px rgba(16,24,40,.04);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg); color:var(--ink); font-size:16px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:860px;margin:0 auto;padding:0 12px 96px}
+header{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--line);padding:12px 14px 0}
+header h1{font-size:18px;margin:0 0 2px;letter-spacing:.5px}
+header .sub{font-size:12px;color:var(--sub);margin:0 0 10px}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:10px}
+.tabs button{flex:1 0 auto;border:1px solid var(--line);background:#fff;color:var(--sub);padding:8px 16px;border-radius:999px;font-size:14px;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.view{display:none;padding-top:14px}
+.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:12px}
+.card h3{margin:0 0 6px;font-size:16px}
+.hint{font-size:12px;color:var(--sub);margin:4px 0 12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:9px 14px;font-size:14px;cursor:pointer;font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.block{width:100%}
+.btn:active{opacity:.82}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.muted{color:var(--sub)}
+.small{font-size:13px}
+.lbl{font-size:12px;font-weight:700;color:var(--accent2);margin:10px 0 3px}
+.ans-txt{font-size:14px;white-space:pre-wrap;word-break:break-word}
+/* 折叠卡片 */
+.mod{border:1px solid var(--line);border-radius:var(--radius);background:#fff;margin-bottom:10px;overflow:hidden}
+.mod-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;background:#fff}
+.mod-head .n{font-weight:600;font-size:15px}
+.mod-head .arrow{transition:.2s;color:var(--sub);flex-shrink:0}
+.mod.open .arrow{transform:rotate(90deg)}
+.mod-body{display:none;padding:0 15px 14px}
+.mod.open .mod-body{display:block}
+.mod-body .def{font-size:14px;margin:2px 0 6px}
+.mod-body .ex{font-size:13px;color:var(--sub);background:var(--soft);border-radius:8px;padding:8px 10px}
+.ex b{color:var(--accent2)}
+/* 图例 */
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.legend span{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+/* ===== 决策树（CSS tree）===== */
+.tree-wrap{overflow-x:auto;padding:8px 0 4px}
+.tree,.tree ul{list-style:none;margin:0;padding:0}
+.tree{text-align:center}
+.tree ul{padding-top:18px;position:relative;transition:.2s}
+.tree li{display:inline-block;vertical-align:top;text-align:center;position:relative;padding:18px 8px 0}
+/* 连接线 */
+.tree li::before,.tree li::after{content:'';position:absolute;top:0;right:50%;width:50%;height:18px;border-top:2px solid #cbd5e1}
+.tree li::after{right:auto;left:50%;border-left:2px solid #cbd5e1}
+.tree li:only-child::before,.tree li:only-child::after{display:none}
+.tree li:only-child{padding-top:0}
+.tree li:first-child::before,.tree li:last-child::after{border:0 none}
+.tree li:last-child::before{border-right:2px solid #cbd5e1;border-radius:0 8px 0 0}
+.tree li:first-child::after{border-radius:8px 0 0 0}
+.tree ul ul::before{content:'';position:absolute;top:0;left:50%;border-left:2px solid #cbd5e1;width:0;height:18px}
+/* 节点 */
+.node{display:inline-block;max-width:180px;padding:9px 12px;border-radius:11px;border:2px solid;background:#fff;cursor:pointer;font-size:13.5px;line-height:1.4;text-align:left;box-shadow:var(--shadow);transition:transform .08s,box-shadow .12s;position:relative}
+.node:active{transform:scale(.97)}
+.node .ni{font-size:11px;font-weight:700;opacity:.72;display:block;margin-bottom:1px}
+.node:hover{box-shadow:0 4px 14px rgba(16,24,40,.14)}
+.node.root{border-color:var(--root)}
+.node.internal{border-color:var(--internal)}
+.node.leaf{border-color:var(--leaf)}
+.node.sel{box-shadow:0 0 0 3px rgba(37,99,235,.25);transform:translateY(-1px)}
+/* 选中指引面板 */
+.detail{position:sticky;top:108px;z-index:40;background:#fff;border:1px solid var(--accent);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:14px}
+.detail .d-tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;color:#fff;margin-bottom:8px}
+.detail .d-tag.root{background:var(--root)}
+.detail .d-tag.internal{background:var(--internal)}
+.detail .d-tag.leaf{background:var(--leaf)}
+.detail h3{margin:0 0 6px;font-size:16px}
+.detail .d-body{font-size:14px}
+.detail .d-tip{margin-top:8px;font-size:13px;color:var(--accent2);background:var(--soft);border-radius:8px;padding:8px 10px}
+.detail .d-path{font-size:12px;color:var(--sub);margin-bottom:8px}
+/* 引导步进 */
+.step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 16px;margin-bottom:14px}
+.step .snum{font-size:12px;color:var(--accent);font-weight:700;margin-bottom:6px}
+.step .sq{font-size:17px;font-weight:600;margin-bottom:10px;line-height:1.5}
+.step textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:14px;resize:vertical;font-family:inherit;background:#fbfcfd;margin-bottom:10px}
+.step-ans{display:none;margin-top:6px;padding-top:12px;border-top:1px dashed var(--line)}
+.step.show .step-ans{display:block}
+.step-ans .lbl{margin-top:0}
+.progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:12px 0}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:.3s}
+/* 检验 */
+.qcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 16px;margin-bottom:14px}
+.qcard .qnum{font-size:12px;color:var(--sub);margin-bottom:8px}
+.qcard .qtext{font-size:17px;font-weight:600;margin-bottom:14px;line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opts button{text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:14px;cursor:pointer;line-height:1.5}
+.opts button:active{opacity:.85}
+.opts button.right{background:#e7f4ef;border-color:#9fd3c0;color:var(--ok)}
+.opts button.wrong{background:#fdeeee;border-color:#ecc8c8;color:var(--bad)}
+.opts button.dim{opacity:.55}
+.feedback{display:none;margin-top:12px;padding:11px 13px;border-radius:10px;font-size:14px}
+.feedback.ok{display:block;background:#e7f4ef;border:1px solid #bfe3d5;color:#0a4f44}
+.feedback.no{display:block;background:#fdeeee;border:1px solid #f0cccc;color:#8f2323}
+.feedback b{display:block;margin-bottom:3px}
+.report h2{margin:0 0 8px}
+.bigscore{font-size:40px;font-weight:800;color:var(--accent);margin:6px 0}
+.legend2{font-size:13px;color:var(--sub);margin-bottom:14px}
+.level{display:inline-block;padding:6px 16px;border-radius:999px;font-size:15px;font-weight:700;margin-bottom:8px}
+.lv1{background:#e7f4ef;color:#0a4f44}
+.lv2{background:#fff7ed;color:#b45309}
+.lv3{background:#fdeeee;color:#b91c1c}
+.foot{font-size:12px;color:var(--sub);text-align:center;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>决策树 · 用树形结构做决定判断</h1>
+  <p class="sub">根节点 → 内部节点 → 分支 → 叶子　·　点击每个节点查看指引</p>
+  <div class="tabs" id="tabs">
+    <button data-v="browse" class="on">认识决策树</button>
+    <button data-v="tree">互动决策树</button>
+    <button data-v="guide">七步决策</button>
+    <button data-v="test">检验</button>
+  </div>
+</header>
+
+<!-- 认识决策树 -->
+<section class="view on" id="view-browse">
+  <div class="card">
+    <h3>什么是决策树？</h3>
+    <div class="ans-txt" id="def"></div>
+    <div class="lbl">一句话记住</div>
+    <div class="ans-txt" id="oneline" style="color:var(--accent2)"></div>
+    <div class="lbl">决策树 vs 其他判断方式</div>
+    <div class="ans-txt" id="vs"></div>
+  </div>
+  <div class="card">
+    <h3>树的四个部分</h3>
+    <div class="hint">点击展开。一棵决策树就是这四个部件一层层搭起来的。</div>
+    <div id="parts"></div>
+  </div>
+  <div class="card">
+    <h3>怎么选「先问哪个特征」？</h3>
+    <div class="hint">点击展开。这是决策树算法的核心——每一步挑一个「最能把人/事分清楚」的问题。</div>
+    <div id="split"></div>
+  </div>
+  <div class="card">
+    <h3>集成学习：一棵树不够，一群树更稳</h3>
+    <div class="hint">点击展开。文献里反复出现的随机森林、梯度提升，都是「多棵树」的组合拳。</div>
+    <div id="ensemble"></div>
+  </div>
+  <div class="card">
+    <h3>决策树的两个关键问题</h3>
+    <div class="hint">点击展开。会用，也要知道它的「坑」在哪。</div>
+    <div id="pitfalls"></div>
+  </div>
+</section>
+
+<!-- 互动决策树 -->
+<section class="view" id="view-tree">
+  <div class="card">
+    <h3>案例：企业要不要数字化转型？</h3>
+    <div class="hint">这是一棵简化版决策树（依据「企业数字化转型影响因素」研究重画）。<b>点击任意节点</b>，下方会出现它的指引。</div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--root)"></i>根节点 · 决策目标</span>
+      <span><i class="dot" style="background:var(--internal)"></i>内部节点 · 判断条件</span>
+      <span><i class="dot" style="background:var(--leaf)"></i>叶子节点 · 最终结论</span>
+    </div>
+  </div>
+  <div class="detail" id="detail" style="display:none"></div>
+  <div class="card">
+    <div class="tree-wrap"><ul class="tree" id="treeRoot"></ul></div>
+  </div>
+</section>
+
+<!-- 七步决策 -->
+<section class="view" id="view-guide">
+  <div class="card">
+    <h3>七步：用决策树做一次决定</h3>
+    <div class="hint" id="guide-intro"></div>
+    <div class="progress"><i id="guide-bar" style="width:0%"></i></div>
+    <div class="small muted" id="guide-stat"></div>
+  </div>
+  <div id="guide-body"></div>
+</section>
+
+<!-- 检验 -->
+<section class="view" id="view-test">
+  <div class="card">
+    <h3>检测：你真的会用决策树了吗？</h3>
+    <div class="hint">10 道题，答完生成你的决策树掌握等级。</div>
+    <div class="progress"><i id="test-bar" style="width:0%"></i></div>
+    <div class="small muted" id="test-stat"></div>
+  </div>
+  <div id="test-body"></div>
+</section>
+
+<div class="foot">基于 105 篇「决策树 · 机器学习 · 决策」相关文献提炼 · 互动示范</div>
+</div>
+
+<script>
+// ---------------- 认识决策树数据 ----------------
+const BROWSE = {
+  def: "决策树是一种「树形」的决策与分类模型：从根节点出发，在每一个内部节点按某个「特征」做一次判断，沿对应的分支一路走下去，最终落到一个叶子节点，得到明确的结论。它把复杂的判断，拆成一条条清晰的「如果…就…」规则。",
+  oneline: "决策树 = 一连串「如果…就…」的判断，最终落到一个明确结论。",
+  vs: "· 凭直觉：拍脑袋决定，难解释、难复现、难说服别人。\n· 线性回归：只能做线性组合，难以表达「先看 A、再看 B」的分层规则。\n· 决策树：分层判断，看得懂、画得出、能处理非线性关系。",
+  parts: [
+    {k:"根节点（Root）", def:"整棵树的起点，就是你要回答的那个「要不要 / 是不是 / 选哪个」的问题。整棵树只有一个根。", ex:"<b>例</b>：企业要不要数字化转型？"},
+    {k:"内部节点（Internal Node）", def:"一个「判断条件」（特征），比如「同行业是否已转型」。它把当前的人/事按条件分成几路。", ex:"<b>例</b>：同群效应、人力资本、政府补助、技术能力。"},
+    {k:"分支（Branch）", def:"判断的结果，把父节点连到子节点。通常是「是 / 否」，也可以是几个类别。", ex:"<b>例</b>：已普遍转型 → 走「是」分支。"},
+    {k:"叶子节点（Leaf）", def:"最终的结论 / 决策。走到这里，判断结束，不再继续分支。", ex:"<b>例</b>：积极转型、观望暂缓、先补短板。"}
+  ],
+  split: [
+    {k:"信息增益（ID3 / C4.5）", def:"选那个能把数据「分得最纯」的特征，让每个子节点里的样本尽可能「同质」。", ex:"<b>直觉</b>：一个问题问下去，如果一边全是「转」、另一边全是「不转」，这个问题就很好。"},
+    {k:"基尼指数（CART）", def:"衡量「不纯度」，基尼越小越纯。每次分裂，选让基尼下降最多的那个特征。", ex:"<b>文献</b>：CART（分类与回归树）是文献里最常用的决策树算法之一。"},
+    {k:"卡方检验（CHAID）", def:"用统计显著性判断「这个特征和结果到底有没有关系」，没关系的就不再分裂。", ex:"<b>区别</b>：CHAID 会自动「刹车」，避免无意义的分支。"},
+    {k:"共同目标", def:"无论哪种标准，本质都是——每一步都选「最能分清结果」的那个问题。", ex:"<b>记住</b>：好的分裂 = 子节点里样本越纯越好。"}
+  ],
+  ensemble: [
+    {k:"随机森林（Random Forest）", def:"种很多棵「随机」的树（随机抽样、随机选特征），每棵树投一票，取多数为最终结果。", ex:"<b>思想</b>：Bagging——让一群「不太一样」的树投票，减少单棵树的偏差。"},
+    {k:"梯度提升（Gradient Boosting / XGBoost / LightGBM）", def:"一棵接一棵地「纠错」：后一棵树专门去学前一轮没预测好的那部分（残差）。", ex:"<b>思想</b>：Boosting——串行纠错，逐步逼近正确答案。"},
+    {k:"为什么集成更好", def:"单棵树容易「过拟合」（把噪声也背下来）；集成多棵树能互相削峰填谷，预测更稳、更准。", ex:"<b>文献</b>：大量研究都发现，随机森林 / 梯度提升的预测精度显著优于单棵树和线性模型。"}
+  ],
+  pitfalls: [
+    {k:"过拟合（Overfitting）", def:"树长得太深，把训练数据里的噪声也「背」下来了，换一批新数据就失灵。", ex:"<b>对策</b>：剪枝——限制最大深度、限制叶子最少样本数、事后剪掉没用的枝。"},
+    {k:"可解释性（Interpretability）", def:"决策树最大的优势就是「看得懂」：从根到叶的每一条路径，都是一条清晰的决策规则。", ex:"<b>延伸</b>：这也是 SHAP 等可解释方法的基石——把黑箱「翻译」成人能懂的规则。"}
+  ]
+};
+
+// ---------------- 互动决策树数据 ----------------
+const TREE = {
+  id:'root', kind:'root', label:'企业要不要数字化转型？', icon:'🎯',
+  g:{title:'根节点 · 决策目标', body:'整棵树的起点，就是你要回答的那个问题。决策树的第一步永远是「把目标钉死」——你到底要做的是一个「是/否」的判断，还是一个「选哪个方案」的选择？', tip:'先问自己：我要判断的「结果」是什么？转型 / 不转型，还是别的选项？'},
+  children:[
+    { id:'n1', kind:'internal', label:'同行业是否已普遍转型？', icon:'👥',
+      g:{title:'内部节点 · 同群效应', body:'这是文献里预测贡献最大的特征。企业是否转型，往往不是孤立决定，而是受「同行怎么做」影响。这里先问同群，因为它最能区分「会转」和「不会转」的企业。', tip:'为什么先问这个？因为它最能把样本「分得最纯」——这正是决策树选分裂点的标准。'},
+      children:[
+        { id:'l1', kind:'leaf', label:'观望暂缓', icon:'⏸️',
+          g:{title:'叶子节点 · 结论：观望暂缓', body:'同行还没普遍转，说明缺「同群示范」和社会学习效应，转型动力偏弱。判断走到这里就结束，结论是：暂缓。', tip:'叶子 = 最终决策，不再继续分支。这条路对应的规则是「如果同行没转 → 暂缓」。'} },
+        { id:'n2', kind:'internal', label:'人力资本是否充足？', icon:'🧑‍🔬',
+          g:{title:'内部节点 · 人力资本', body:'同行已经在转了，接下来看「自己有没有人会干」。人力资本是第二大重要因素——没有人，转型无从谈起。', tip:'这是一个新的判断条件（新特征），把「同行已转」的企业再分成两类。'},
+          children:[
+            { id:'n3', kind:'internal', label:'政府补助 / 资金是否到位？', icon:'💰',
+              g:{title:'内部节点 · 政策与资金', body:'人力不足时，看有没有外部「输血」。政府补助对转型意愿的预测能力较强——有资金扶持，可以借政策资源补技术短板。', tip:'注意：这条分支是在「缺人」的前提下才问资金，体现了决策树「先 A 后 B」的层次。'},
+              children:[
+                { id:'l2', kind:'leaf', label:'暂缓，先补短板', icon:'🛑',
+                  g:{title:'叶子节点 · 结论：暂缓，先补短板', body:'同行转了，但自己既缺人又缺钱，转型条件不成熟。结论：暂缓，先把人力、资金这两个短板补上再说。', tip:'对应规则「同行已转 ∧ 缺人力 ∧ 缺资金 → 暂缓」。'} },
+                { id:'l3', kind:'leaf', label:'谨慎启动', icon:'🐢',
+                  g:{title:'叶子节点 · 结论：谨慎启动', body:'缺人但有政府补助兜底，可以借政策资源起步。结论：谨慎启动——边转边补人力。', tip:'文献发现「降低制度性准入门槛」这类政策激励，比单纯补贴更有效。'} }
+              ] },
+            { id:'n4', kind:'internal', label:'数字技术投资与吸收能力？', icon:'🔧',
+              g:{title:'内部节点 · 技术能力', body:'人力充足的情况下，再看技术这条线：有没有足够的数字技术投资，以及「吸收能力」（把新技术吃进去用起来的能力）。', tip:'吸收能力对转型意愿的预测力较强，是「会不会转」的关键一环。'},
+              children:[
+                { id:'l4', kind:'leaf', label:'先提升吸收能力', icon:'📚',
+                  g:{title:'叶子节点 · 结论：先提升吸收能力', body:'有人、同行也转了，但技术投入或吸收能力不足，容易「想转转不动」。结论：先补技术、提升吸收能力。', tip:'对应文献里的「不会转」困境——不是不想，而是能力不够。'} },
+                { id:'l5', kind:'leaf', label:'积极转型', icon:'🚀',
+                  g:{title:'叶子节点 · 结论：积极转型', body:'同行已转 + 人力充足 + 技术能力到位，转型条件全部成熟。结论：积极转型。', tip:'从根到叶的完整规则：「同行已转 ∧ 有人 ∧ 有技术 → 积极转型」。'} }
+              ] }
+          ] }
+      ] }
+  ]
+};
+
+// ---------------- 七步决策数据 ----------------
+const GUIDE = {
+  intro: "用决策树做决定的本质，是把「拍脑袋」换成「拆问题」。跟着 7 步走，每一步先自己想一想（可写下思路），再点开「这一步怎么做」对照。",
+  steps: [
+    {q:"第一步 · 钉死根节点：我要做的到底是什么决定？",
+     a:"用一句话把决策目标说清楚，最好是「是/否」或几个明确选项。比如「要不要数字化转型」「选 A、B、C 哪个方案」。目标不清晰，后面全白搭。"},
+    {q:"第二步 · 列出判断标准：哪些「特征」会影响这个决定？",
+     a:"把所有可能影响结果的因素都列出来（人、钱、技术、市场、同行、政策…），这就是「候选特征」。先别筛选，先尽量列全。"},
+    {q:"第三步 · 找最关键的特征：先问哪一个？",
+     a:"用「信息增益 / 基尼指数」的思路问自己：哪个问题问下去，最能把手里的样本/方案「分得最开」？这个就是根节点下面的第一个内部节点。"},
+    {q:"第四步 · 逐层分支：按特征一层层拆下去。",
+     a:"每回答一个判断条件，就把人群/方案分成几路；对每一路，再问「接下来哪个条件最能继续分清楚」。反复做，直到每一路都足够「纯」。"},
+    {q:"第五步 · 走到叶子：得到结论。",
+     a:"当某一路不再需要继续分（结论已经清楚），就把它设成叶子节点。从根到叶的整条路径，就是一条可复述的决策规则——「如果 A 且 B 且 C，就选 X」。"},
+    {q:"第六步 · 剪枝：别问太多无关的。",
+     a:"检查有没有「问了也白问」的枝（对结果几乎没影响），或者树是不是分得太碎、把噪声也背下来了。剪掉它们，树才简洁、才经得起换数据检验。"},
+    {q:"第七步 · 验证与复盘：这棵树靠不靠谱？",
+     a:"拿一批「没参与建树」的新案例来试，看预测/决策准不准。准，就放心用；不准，回到第三步重选特征。决策树不是一次成型，是反复校准出来的。"}
+  ]
+};
+
+// ---------------- 检验数据 ----------------
+const TEST = [
+  {q:"决策树的「根节点」代表什么？", type:"choice",
+   opts:["最终结论","要回答的决策目标 / 问题","判断条件"],
+   ans:1, why:"根节点是整棵树的起点，是那个「要不要 / 选哪个」的目标问题。"},
+  {q:"决策树的「内部节点」代表什么？", type:"choice",
+   opts:["一个判断条件（特征）","一个最终决策","一个数据样本"],
+   ans:0, why:"内部节点是「判断条件」，负责把当前样本按特征分开。"},
+  {q:"决策树的「叶子节点」代表什么？", type:"choice",
+   opts:["判断条件","分支结果","最终结论 / 决策"],
+   ans:2, why:"叶子节点是最终结论，走到这里判断结束，不再分支。"},
+  {q:"CART 决策树算法通常用哪个指标来选择分裂点？", type:"choice",
+   opts:["基尼指数（Gini Index）","均值","方差分析"],
+   ans:0, why:"CART 用基尼指数衡量「不纯度」，每次选让基尼下降最多的特征。"},
+  {q:"「随机森林」的核心思想是？", type:"choice",
+   opts:["一棵树不断加深","多棵随机树的投票（Bagging）","串行纠错（Boosting）"],
+   ans:1, why:"随机森林是 Bagging：种很多棵随机的树，取多数投票为结果。"},
+  {q:"「梯度提升树（Boosting）」的核心思想是？", type:"choice",
+   opts:["多棵树并行投票","后一棵树专门学前一轮的残差，串行纠错","把所有特征随机打乱"],
+   ans:1, why:"Boosting 是串行纠错：后一棵树专学前一轮没预测好的部分。"},
+  {q:"决策树「过拟合」通常意味着什么？", type:"judge",
+   ans:true, why:"过拟合 = 树长得太深，把训练数据的噪声也背下来了，换新数据就失灵。"},
+  {q:"缓解决策树过拟合，常用的办法是「剪枝」。", type:"judge",
+   ans:true, why:"剪枝（限制深度、限制叶子最少样本数等）能让树更简洁、更泛化。"},
+  {q:"用决策树做决定时，第一步应该做什么？", type:"choice",
+   opts:["直接选最优方案","明确决策目标（钉死根节点）","先把所有方案列出来投票"],
+   ans:1, why:"第一步永远是明确决策目标——目标不清晰，后面全白搭。"},
+  {q:"决策树相比线性回归，一个突出优势是？", type:"choice",
+   opts:["只能处理线性关系","可解释、能画出「如果…就…」的分层规则","永远不需要数据"],
+   ans:1, why:"决策树看得懂、画得出，能表达非线性、分层的判断规则。"}
+];
+
+// ---------------- 工具 ----------------
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function switchView(v){
+  $$('.view').forEach(x=>x.classList.remove('on'));
+  $('#view-'+v).classList.add('on');
+  $$('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+}
+
+// ---------------- 认识决策树 ----------------
+function fold(arr){
+  return arr.map(m=>`
+    <div class="mod">
+      <div class="mod-head" onclick="toggleMod(this)"><span class="n">${esc(m.k)}</span><span class="arrow">▸</span></div>
+      <div class="mod-body"><div class="def">${esc(m.def)}</div><div class="ex">${m.ex}</div></div>
+    </div>`).join('');
+}
+function renderBrowse(){
+  $('#def').textContent = BROWSE.def;
+  $('#oneline').textContent = BROWSE.oneline;
+  $('#vs').textContent = BROWSE.vs;
+  $('#parts').innerHTML = fold(BROWSE.parts);
+  $('#split').innerHTML = fold(BROWSE.split);
+  $('#ensemble').innerHTML = fold(BROWSE.ensemble);
+  $('#pitfalls').innerHTML = fold(BROWSE.pitfalls);
+}
+function toggleMod(el){ el.parentElement.classList.toggle('open'); }
+
+// ---------------- 互动决策树 ----------------
+let selectedId = 'root';
+const KIND = {root:'根节点', internal:'内部节点', leaf:'叶子节点'};
+function renderTree(){
+  $('#treeRoot').innerHTML = renderNode(TREE);
+}
+function renderNode(node){
+  const kids = (node.children || []).map(renderNode).join('');
+  const icon = node.icon ? `<span>${node.icon}</span> ` : '';
+  return `<li>
+    <div class="node ${node.kind}${node.id===selectedId?' sel':''}" data-id="${node.id}" onclick="selectNode('${node.id}')">
+      <span class="ni">${KIND[node.kind]}</span>${icon}${esc(node.label)}
+    </div>
+    ${kids ? `<ul>${kids}</ul>` : ''}
+  </li>`;
+}
+function findNode(node, id){
+  if(node.id === id) return node;
+  for(const c of (node.children||[])){ const r = findNode(c, id); if(r) return r; }
+  return null;
+}
+function selectNode(id){
+  selectedId = id;
+  $$('#treeRoot .node').forEach(n=>n.classList.toggle('sel', n.dataset.id===id));
+  const node = findNode(TREE, id);
+  if(!node) return;
+  const d = $('#detail');
+  d.style.display = 'block';
+  d.innerHTML = `
+    <span class="d-tag ${node.kind}">${KIND[node.kind]}</span>
+    <div class="d-path">当前节点：${node.icon||''} ${esc(node.label)}</div>
+    <h3>${esc(node.g.title)}</h3>
+    <div class="d-body">${esc(node.g.body)}</div>
+    <div class="d-tip">💡 ${esc(node.g.tip)}</div>`;
+  d.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function initTree(){
+  renderTree();
+  selectNode('root');
+}
+
+// ---------------- 七步决策 ----------------
+let gStep = 0;
+function buildGuide(){
+  gStep = 0;
+  $('#guide-intro').textContent = GUIDE.intro;
+  renderGuideStep();
+}
+function renderGuideStep(){
+  const steps = GUIDE.steps;
+  $('#guide-bar').style.width = (gStep/steps.length*100)+'%';
+  $('#guide-stat').textContent = `第 ${gStep+1} / ${steps.length} 步`;
+  const s = steps[gStep];
+  const isLast = gStep === steps.length-1;
+  $('#guide-body').innerHTML = `
+    <div class="step" id="step">
+      <div class="snum">${isLast ? '🎯 收尾' : 'STEP '+(gStep+1)}</div>
+      <div class="sq">${esc(s.q)}</div>
+      <textarea placeholder="先写下你的想法（可选）…"></textarea>
+      <div class="row">
+        <button class="btn primary" onclick="revealStep()">看这一步怎么做</button>
+        ${gStep>0?`<button class="btn" onclick="prevStep()">上一步</button>`:''}
+      </div>
+      <div class="step-ans">
+        <div class="lbl">这一步怎么做</div>
+        <div class="ans-txt">${esc(s.a)}</div>
+        <div class="row" style="margin-top:12px">
+          ${isLast
+            ? `<button class="btn primary" onclick="guideDone()">完成，去检验 →</button>`
+            : `<button class="btn primary" onclick="nextStep()">下一步 →</button>`}
+        </div>
+      </div>
+    </div>`;
+}
+function revealStep(){ $('#step').classList.add('show'); }
+function nextStep(){ if(gStep < GUIDE.steps.length-1){ gStep++; renderGuideStep(); } }
+function prevStep(){ if(gStep > 0){ gStep--; renderGuideStep(); } }
+function guideDone(){ switchView('test'); buildTest(); }
+
+// ---------------- 检验 ----------------
+let tPos = 0, tScore = 0;
+function buildTest(){
+  tPos = 0; tScore = 0;
+  renderTestStat();
+  renderTestQ();
+}
+function renderTestStat(){
+  const n = TEST.length;
+  $('#test-bar').style.width = (tPos/n*100)+'%';
+  $('#test-stat').textContent = `第 ${tPos} / ${n} 题 · 已答对 ${tScore} 题`;
+}
+function renderTestQ(){
+  const n = TEST.length;
+  if(tPos >= n){ renderReport(); return; }
+  const q = TEST[tPos];
+  let optsHtml = '';
+  if(q.type === 'judge'){
+    optsHtml = `<button data-i="0">正确</button><button data-i="1">错误</button>`;
+    q._ansIdx = q.ans ? 0 : 1;
+  } else {
+    optsHtml = q.opts.map((o,i)=>`<button data-i="${i}">${esc(o)}</button>`).join('');
+    q._ansIdx = q.ans;
+  }
+  $('#test-body').innerHTML = `
+    <div class="qcard" id="qcard">
+      <div class="qnum">第 ${tPos+1} / ${n} 题</div>
+      <div class="qtext">${esc(q.q)}</div>
+      <div class="opts" id="opts">${optsHtml}</div>
+      <div class="feedback" id="fb"></div>
+      <div class="row" style="margin-top:12px;display:none" id="next-row">
+        <button class="btn primary block" onclick="nextTest()">${tPos===n-1?'查看结果':'下一题 →'}</button>
+      </div>
+    </div>`;
+  $$('#opts button').forEach(b=>{
+    b.addEventListener('click', ()=> answer(b.dataset.i));
+  });
+}
+function answer(i){
+  const q = TEST[tPos];
+  const right = Number(i) === q._ansIdx;
+  if(right) tScore++;
+  const btns = $$('#opts button');
+  btns.forEach(b=>{
+    b.disabled = true;
+    b.classList.add('dim');
+    if(Number(b.dataset.i) === q._ansIdx) b.classList.add('right');
+    if(Number(b.dataset.i) === Number(i) && !right) b.classList.add('wrong');
+  });
+  const fb = $('#fb');
+  fb.className = 'feedback ' + (right?'ok':'no');
+  fb.innerHTML = `<b>${right?'✓ 回答正确':'✗ 回答错误'}</b>${esc(q.why)}`;
+  $('#next-row').style.display = 'flex';
+}
+function nextTest(){ tPos++; renderTestStat(); renderTestQ(); }
+function renderReport(){
+  const n = TEST.length;
+  const pct = Math.round(tScore/n*100);
+  let lv, cls;
+  if(pct >= 85){ lv = '决策树掌握扎实'; cls='lv1'; }
+  else if(pct >= 60){ lv = '决策树基本入门'; cls='lv2'; }
+  else { lv = '还需补补基础'; cls='lv3'; }
+  $('#test-body').innerHTML = `
+    <div class="card report">
+      <h2>决策树掌握检测结果</h2>
+      <div class="bigscore">${tScore} / ${n}</div>
+      <div class="level ${cls}">${lv}</div>
+      <div class="legend2">正确率 ${pct}%。${pct>=85?'你已经能熟练用决策树拆解判断、做决定了，继续保持。':pct>=60?'方向对了，但对「分裂标准 / 集成 / 过拟合」还拿不稳，建议回到「认识决策树」和「互动决策树」再点一遍。':'建议先回到「认识决策树」把四个部分和分裂标准理清，再到「互动决策树」点击每个节点对照。'}</div>
+      <button class="btn primary block" onclick="buildTest()">再测一次</button>
+      <button class="btn block" style="margin-top:8px" onclick="switchView('tree');initTree()">回互动决策树</button>
+    </div>`;
+}
+
+// ---------------- 初始化 ----------------
+$('#tabs').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  switchView(b.dataset.v);
+  if(b.dataset.v==='guide') buildGuide();
+  if(b.dataset.v==='test') buildTest();
+});
+renderBrowse();
+initTree();
+</script>
+</body>
+</html>
